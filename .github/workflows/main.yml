@@ -13,3 +13,56 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1 #가장 최근 commit의 히스토리만 가져옴.
+          
+      # aws configure 와 비슷. 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      # ECR에 로그인하기 위한 액션
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # 환경변수 선언
+      - name: Set Variables
+        id: set-var
+        run: |
+          echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
+          echo "ECR_REPOSITORY=frontend" >> $GITHUB_ENV #본인 ecr레포에 맞게 수정
+          echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV
+          echo "GIT_EMAIL=shawnwoo27@naver.com" >> $GITHUB_ENV
+          echo "GIT_NAME=shawnwoo27" >> $GITHUB_ENV
+
+      # docker build -t <레지스트리주소>/<레포이름>:<태그>
+      - name: Docker Image Build
+        id: build-image
+        run: |
+          docker build -t ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} .
+
+      # Manifest 파일 접근
+      - name: Checkout Deployment Repository
+        uses: actions/checkout@v4
+        with:
+          repository: shawnwoo27/argocd_prac #본인에 맞게 수정
+          ref: main  # branch
+          token: ${{ secrets.GH_TOKEN }}
+          
+      # Manifest 파일 수정
+      - name: k8s manifest update
+        run: |
+          sed -i "s@ \
+          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:.*@ \
+          image: ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}@g" deploy.yml
+
+      # 변경한 Manifest 파일이 있는 레포 Commit and Push
+      - name: Commit and Push
+        run: |
+          git config user.email ${{ env.GIT_EMAIL }}
+          git config user.name ${{ env.GIT_NAME }}
+          git add deploy.yml
+          git commit -m "Update image tag"
+          git push origin main
