@@ -34,8 +34,8 @@ jobs:
           echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
           echo "ECR_REPOSITORY=frontend" >> $GITHUB_ENV #본인 ecr레포에 맞게 수정
           echo "IMAGE_TAG=${{ github.run_number }}" >> $GITHUB_ENV
-          echo "GIT_EMAIL=shawnwoo27@naver.com" >> $GITHUB_ENV
-          echo "GIT_NAME=shawnwoo27" >> $GITHUB_ENV
+          echo "GIT_EMAIL=test" >> $GITHUB_ENV
+          echo "GIT_NAME=test" >> $GITHUB_ENV
 
       # docker build -t <레지스트리주소>/<레포이름>:<태그>
       - name: Docker Image Build
